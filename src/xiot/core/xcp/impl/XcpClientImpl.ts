@@ -19,7 +19,7 @@ export class XcpClientImpl implements XcpClient {
 
   private ws: WebSocket | null = null;
   private verifier: XcpClientVerifier | null = null;
-  private verified: boolean = false;
+  private verified = false;
   private msgIndex = 0;
   private frameCodec: BinaryFrameCodec | null = null;
   private messageCodec: XcpMessageCodec;
@@ -82,7 +82,7 @@ export class XcpClientImpl implements XcpClient {
   private onMessage(event: MessageEvent): void {
     console.log('onMessage: ', event.data);
 
-    let msg : XcpMessage | null = null;
+    let msg: XcpMessage | null = null;
 
     if (this.frameCodec == null) {
       msg = this.messageCodec.decode(event.data);
@@ -90,7 +90,7 @@ export class XcpClientImpl implements XcpClient {
       const data = this.frameCodec.decrypt(event.data);
       if (data != null) {
         const s = Utf8ArrayToStr(data);
-        msg = this.messageCodec.decode(s);  
+        msg = this.messageCodec.decode(s);
       }
     }
 
