@@ -1,7 +1,7 @@
 {
-  "name": "xiot-core-xcp-ts",
-  "version": "0.8.15",
-  "description": "XCP Protocol",
+  "name": "xiot-core-xcp-browser-ts",
+  "version": "0.9.6",
+  "description": "XCP Protocol implementation on browser",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -12,7 +12,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/gkcity/xiot-core-xcp-ts.git"
+    "url": "git+https://github.com/gkcity/xiot-core-xcp-browser-ts.git"
   },
   "keywords": [
     "xiot",
@@ -21,9 +21,9 @@
   "author": "gkcity <178915185@gmail.com> (http://github.com/gkcity)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/gkcity/xiot-core-xcp-ts/issues"
+    "url": "https://github.com/gkcity/xiot-core-xcp-browser-ts/issues"
   },
-  "homepage": "https://github.com/gkcity/xiot-core-xcp-ts#readme",
+  "homepage": "https://github.com/gkcity/xiot-core-xcp-browser-ts#readme",
   "dependencies": {
     "@stablelib/chacha20poly1305": "^0.10.2",
     "@stablelib/ed25519": "^0.7.2",
@@ -32,8 +32,7 @@
     "@stablelib/x25519": "^0.7.2",
     "buffer": "^5.2.1",
     "mipher": "^1.1.5",
-    "xiot-core-message-ts": "^0.8.15",
-    "xiot-core-spec-ts": "^0.8.15"
+    "xiot-core-message-ts": "^0.9.6"
   },
   "devDependencies": {
     "@types/chai": "^4.1.2",

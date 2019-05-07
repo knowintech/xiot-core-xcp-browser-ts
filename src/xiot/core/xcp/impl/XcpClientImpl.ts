@@ -14,25 +14,31 @@ import {XcpSessionKey} from '../common/XcpSessionKey';
 import {WebSocketBinaryFrameCodecImpl} from '../codec/WebSocketBinaryFrameCodecImpl';
 import {BinaryFrameCodec} from '../BinaryFrameCodec';
 import {Utf8ArrayToStr} from '../utils/Uint8ArrayUtils';
+import {XcpUniversalDID} from 'xiot-core-spec-ts/dist/xiot/core/spec/typedef/udid/XcpUniversalDID';
+import {OperationStatus} from 'xiot-core-spec-ts/dist/xiot/core/spec/typedef/status/OperationStatus';
 
 export class XcpClientImpl implements XcpClient {
 
+  private udid: XcpUniversalDID;
   private ws: WebSocket | null = null;
   private verifier: XcpClientVerifier | null = null;
   private verified = false;
-  private msgIndex = 0;
   private frameCodec: BinaryFrameCodec | null = null;
   private messageCodec: XcpMessageCodec;
-  private resultHandlers: Map<string, (result: IQResult | null, error: IQError | null) => void>;
   private verifyHandler: (result: boolean) => void = () => {};
+  private resultHandlers: Map<string, (result: IQResult | null, error: IQError | null) => void>;
+  private queryHandlers: Map<string, (query: IQQuery) => void>;
+  private messageId = 1;
 
-  constructor(private deviceId: string,
-              private productId: number,
-              private productVersion: number,
+  constructor(serialNumber: string,
+              productId: number,
+              productVersion: number,
               private cipher: XcpClientCipher,
               private codec: XcpFrameCodecType) {
+    this.udid = new XcpUniversalDID(serialNumber, productId, productVersion);
     this.messageCodec = new XcpMessageCodec();
     this.resultHandlers = new Map<string, (result: IQResult | null, error: IQError | null) => void>();
+    this.queryHandlers = new Map<string, (query: IQQuery) => void>();
   }
 
   connect(host: string, port: number, uri: string): Promise<void> {
@@ -62,11 +68,62 @@ export class XcpClientImpl implements XcpClient {
     }
   }
 
+  getSerialNumber(): string {
+    return this.udid.serialNumber;
+  }
+
+  getProductId(): number {
+    return this.udid.productId;
+  }
+
+  getProductVersion(): number {
+    return this.udid.productVersion;
+  }
+
+  getUdid(): string {
+    return this.udid.toString();
+  }
+
+  getNextId(): string {
+    return this.udid.toString() + '#' + Date.now() + '#' + this.messageId++;
+  }
+
+  addQueryHandler(method: string, handler: (query: IQQuery) => void): void {
+    console.log('addQueryHandler: ', method);
+    this.queryHandlers.set(method, handler);
+  }
+
+  sendQuery(query: IQQuery): Promise<IQResult> {
+    this.write(this.messageCodec.encode(query));
+    return new Promise<IQResult>((resolve, reject) => {
+      this.resultHandlers.set(query.id, (result, error) => {
+        if (error != null) {
+          reject(error);
+          return;
+        }
+
+        if (result == null) {
+          return;
+        }
+
+        resolve(result);
+      });
+    });
+  }
+
+  sendResult(result: IQResult): void {
+    this.write(this.messageCodec.encode(result));
+  }
+
+  sendError(error: IQError): void {
+    this.write(this.messageCodec.encode(error));
+  }
+
   private onConnected(): void {
     console.log('onConnected');
     this.startVerify('1.0')
-      .then(() => this.verifyHandler(true))
-      .catch(e => this.verifyHandler(false));
+        .then(() => this.verifyHandler(true))
+        .catch(e => this.verifyHandler(false));
   }
 
   private onDisconnect(): void {
@@ -79,15 +136,15 @@ export class XcpClientImpl implements XcpClient {
     this.ws = null;
   }
 
-  private onMessage(event: MessageEvent): void {
-    console.log('onMessage: ', event.data);
+  private onMessage(message: any): void {
+    console.log(Date() + ' onMessage: ', message.data);
 
     let msg: XcpMessage | null = null;
 
     if (this.frameCodec == null) {
-      msg = this.messageCodec.decode(event.data);
+      msg = this.messageCodec.decode(message.data);
     } else {
-      const data = this.frameCodec.decrypt(event.data);
+      const data = this.frameCodec.decrypt(message.data);
       if (data != null) {
         const s = Utf8ArrayToStr(data);
         msg = this.messageCodec.decode(s);
@@ -99,9 +156,6 @@ export class XcpClientImpl implements XcpClient {
     }
 
     this.handleMessage(msg);
-
-    // this.handler.message = event.data;
-    // console.log('handle.message: ', this.handler.message);
   }
 
   private handleMessage(message: XcpMessage) {
@@ -133,15 +187,18 @@ export class XcpClientImpl implements XcpClient {
       return;
     }
 
-    console.log('handleQuery: ', query.method);
+    const handler = this.queryHandlers.get(query.method);
+    if (handler != null) {
+      handler(query);
+    } else {
+      this.sendError(query.error(OperationStatus.UNDEFINED, 'Query Handler not found'));
+    }
   }
 
   private handleResult(result: IQ) {
     if (! (result instanceof IQResult)) {
       return;
     }
-
-    console.log('handleResult: ', result.method);
 
     const handler = this.resultHandlers.get(result.id);
     if (handler != null) {
@@ -180,50 +237,12 @@ export class XcpClientImpl implements XcpClient {
     this.verified = true;
   }
 
-  private parseError(error: any) {
-    console.error('An error occurred', error);
-  }
-
-  nextId(): string {
-    return'msg#' + this.msgIndex++;
-  }
-
-  getDeviceId(): string {
-    return this.deviceId;
-  }
-
-  getProductId(): number {
-    return this.productId;
-  }
-
-  getProductVersion(): number {
-    return this.productVersion;
-  }
-
   private write(o: Object) {
     const s = JSON.stringify(o);
-    console.log('write: ', s);
+    console.log(Date() + ' write: ', s);
 
     if (this.ws != null) {
       this.ws.send(s);
     }
-  }
-
-  sendQuery(query: IQQuery): Promise<IQResult> {
-    this.write(this.messageCodec.encode(query));
-    return new Promise<IQResult>((resolve, reject) => {
-      this.resultHandlers.set(query.id, (result, error) => {
-        if (error != null) {
-          reject(error);
-          return;
-        }
-
-        if (result == null) {
-          return;
-        }
-
-        resolve(result);
-      });
-    });
   }
 }
