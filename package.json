@@ -1,9 +1,12 @@
 {
   "name": "xiot-core-xcp-browser-ts",
-  "version": "0.16.3",
+  "version": "0.16.8",
   "description": "XCP Protocol implementation on browser",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "clean": "rm -fr dist",
@@ -25,7 +28,7 @@
   },
   "homepage": "https://github.com/gkcity/xiot-core-xcp-browser-ts#readme",
   "dependencies": {
-    "xiot-core-xcp-ts": "^0.16.3"
+    "xiot-core-xcp-ts": "^0.16.8"
   },
   "devDependencies": {
     "@types/chai": "^4.1.2",
